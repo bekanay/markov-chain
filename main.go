@@ -11,30 +11,28 @@ import (
 )
 
 func main() {
-	args := os.Args
-
-	if len(args) < 2 {
-		log.Fatalln("Incorrect usage")
-	}
-
-	cmd := flag.NewFlagSet("cmd", flag.ExitOnError)
+	cmd := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	helpFlag := cmd.Bool("help", false, "Display usage instructions")
 	wordNumber := cmd.Int("w", 100, "Number between 0 and 10000, default value equals to 100")
 	prefix := cmd.String("p", "", "Starting prefix string (must exist in input)")
 	prefixLength := cmd.Int("l", 2, "Prefix length between 1 and 5, default value equals to 2")
-	cmd.Parse(args[1:])
+	cmd.Parse(os.Args[1:])
 
 	if *helpFlag {
-		fmt.Println("Markov Chain text generator.\n")
-		fmt.Println("Usage:")
-		fmt.Println("  markovchain [-w <N>] [-p <S>] [-l <N>]")
-		fmt.Println("  markovchain --help\n")
-		fmt.Println("Options:")
-		fmt.Println("  --help  Show this screen.")
-		fmt.Println("  -w N    Number of maximum words")
-		fmt.Println("  -p S    Starting prefix")
-		fmt.Println("  -l N    Prefix length")
+		printHelp()
 		os.Exit(0)
+	}
+
+	if *wordNumber == 0 {
+		os.Exit(0)
+	}
+
+	if *wordNumber < 0 || *wordNumber > 10000 {
+		log.Fatalln("invalid number of words")
+	}
+
+	if *prefixLength < 1 || *prefixLength > 5 {
+		log.Fatalln("invalid prefix length")
 	}
 
 	var words []string
@@ -48,46 +46,77 @@ func main() {
 		log.Fatalln("invalid text in stdin")
 	}
 
-	prefixFound := false
+	if len(words) < *prefixLength {
+		log.Fatalln("input length is less than prefix length")
+	}
+
+	if *prefix == "" {
+		*prefix = strings.Join(words[0:*prefixLength], " ")
+	}
+
+	prefixSlice := strings.Split(*prefix, " ")
+	if len(prefixSlice) != *prefixLength {
+		log.Fatalln("prefix length shoud be equal to set length")
+	}
+
+	if *wordNumber <= len(prefixSlice) {
+		fmt.Println(strings.Join(prefixSlice[:*wordNumber], " "))
+		os.Exit(0)
+	}
 
 	wordsMap := make(map[string][]string)
-	for i := 0; i+*prefixLength < len(words); i++ {
+	for i := 0; i+*prefixLength <= len(words); i++ {
 		prefixKey := strings.Join(words[i:i+*prefixLength], " ")
-		suffix := words[i+*prefixLength]
-		wordsMap[prefixKey] = append(wordsMap[prefixKey], suffix)
+		if i+*prefixLength < len(words) {
+			wordsMap[prefixKey] = append(wordsMap[prefixKey], words[i+*prefixLength])
+		} else {
+			if _, ok := wordsMap[prefixKey]; !ok {
+				wordsMap[prefixKey] = []string{}
+			}
+		}
 	}
 
-	for i := 0; i < len(words); i++ {
-		tempString := ""
-		for j := 0; j < *prefixLength; j++ {
-			if i+j >= len(words) {
-				continue
-			}
-			tempString += words[i+j]
-			if j != *prefixLength-1 {
-				tempString += " "
-			}
-		}
-		if *prefix == tempString {
-			prefixFound = true
-		}
+	suffixes := wordsMap[*prefix]
+	if suffixes == nil {
+		log.Fatalln("prefix not found")
 	}
+
+	if len(suffixes) == 0 {
+		fmt.Println(*prefix)
+		os.Exit(0)
+	}
+
+	// rand.Seed(time.Now().UnixNano())
 
 	tempPrefix := *prefix
 	result := *prefix + " "
-	for i := 0; i < *wordNumber; i++ {
+	for i := 0; i < *wordNumber-len(prefixSlice); i++ {
 		suffixes := wordsMap[tempPrefix]
 		if len(suffixes) == 0 {
 			break
 		}
 		suffix := suffixes[rand.Intn(len(suffixes))]
 		result += suffix + " "
-		tempPrefix = suffix
+		parts := strings.Split(tempPrefix, " ")
+		parts = append(parts[1:], suffix)
+		tempPrefix = strings.Join(parts, " ")
 	}
 
 	fmt.Println(result)
+	os.Exit(0)
+}
 
-	if !prefixFound {
-		log.Fatalln("prefix not found")
-	}
+func printHelp() {
+	fmt.Fprintf(os.Stdout, `Markov Chain text generator.
+
+Usage:
+markovchain [-w <N>] [-p <S>] [-l <N>]
+markovchain --help
+
+Options:
+--help  Show this screen.
+-w N    Number of maximum words
+-p S    Starting prefix
+-l N    Prefix length
+`)
 }
