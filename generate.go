@@ -14,7 +14,10 @@ func Generate(wordsMap Model, start string, totalWords int, prefixLength int) st
 			break
 		}
 		suffix := suffixes[rand.Intn(len(suffixes))]
-		result += suffix + " "
+		result += suffix
+		if i != totalWords-prefixLength-1 {
+			result += " "
+		}
 		parts := strings.Split(tempPrefix, " ")
 		parts = append(parts[1:], suffix)
 		tempPrefix = strings.Join(parts, " ")
