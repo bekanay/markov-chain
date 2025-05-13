@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
 )
@@ -35,15 +33,9 @@ func main() {
 		log.Fatalln("invalid prefix length")
 	}
 
-	var words []string
-
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Split(bufio.ScanWords)
-	for scanner.Scan() {
-		words = append(words, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatalln("invalid text in stdin")
+	words, err := ReadWords(os.Stdin)
+	if err != nil {
+		log.Fatalln("error reading stdin: ", err)
 	}
 
 	if len(words) < *prefixLength {
@@ -64,17 +56,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	wordsMap := make(map[string][]string)
-	for i := 0; i+*prefixLength <= len(words); i++ {
-		prefixKey := strings.Join(words[i:i+*prefixLength], " ")
-		if i+*prefixLength < len(words) {
-			wordsMap[prefixKey] = append(wordsMap[prefixKey], words[i+*prefixLength])
-		} else {
-			if _, ok := wordsMap[prefixKey]; !ok {
-				wordsMap[prefixKey] = []string{}
-			}
-		}
-	}
+	wordsMap := BuildModel(words, *prefixLength)
 
 	suffixes := wordsMap[*prefix]
 	if suffixes == nil {
@@ -86,37 +68,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	// rand.Seed(time.Now().UnixNano())
-
-	tempPrefix := *prefix
-	result := *prefix + " "
-	for i := 0; i < *wordNumber-len(prefixSlice); i++ {
-		suffixes := wordsMap[tempPrefix]
-		if len(suffixes) == 0 {
-			break
-		}
-		suffix := suffixes[rand.Intn(len(suffixes))]
-		result += suffix + " "
-		parts := strings.Split(tempPrefix, " ")
-		parts = append(parts[1:], suffix)
-		tempPrefix = strings.Join(parts, " ")
-	}
+	result := Generate(wordsMap, *prefix, *wordNumber, *prefixLength)
 
 	fmt.Println(result)
-	os.Exit(0)
-}
-
-func printHelp() {
-	fmt.Fprintf(os.Stdout, `Markov Chain text generator.
-
-Usage:
-markovchain [-w <N>] [-p <S>] [-l <N>]
-markovchain --help
-
-Options:
---help  Show this screen.
--w N    Number of maximum words
--p S    Starting prefix
--l N    Prefix length
-`)
 }
