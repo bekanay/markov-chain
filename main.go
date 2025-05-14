@@ -38,6 +38,11 @@ func main() {
 		log.Fatalln("error reading stdin: ", err)
 	}
 
+	if len(words) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: no input text")
+		os.Exit(1)
+	}
+
 	if len(words) < *prefixLength {
 		log.Fatalln("input length is less than prefix length")
 	}
