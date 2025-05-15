@@ -16,6 +16,8 @@ func main() {
 	prefixLength := cmd.Int("l", 2, "Prefix length between 1 and 5, default value equals to 2")
 	cmd.Parse(os.Args[1:])
 
+	stat, _ := os.Stdin.Stat()
+
 	if *helpFlag {
 		printHelp()
 		os.Exit(0)
@@ -31,6 +33,11 @@ func main() {
 
 	if *prefixLength < 1 || *prefixLength > 5 {
 		log.Fatalln("invalid prefix length")
+	}
+
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		fmt.Fprintf(os.Stderr, "No input text\n")
+		os.Exit(1)
 	}
 
 	words, err := ReadWords(os.Stdin)
